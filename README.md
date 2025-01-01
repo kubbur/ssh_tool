@@ -1,6 +1,3 @@
-# ssh_tool
-
-
 # SSH Register Utility for macOS
 
 ## Overview
@@ -19,53 +16,37 @@ Run the `install.sh` script to install the utility and make it accessible as the
 
 ### Steps:
 1. Clone the repository:
-   \``bash
-   git clone <repository_url>
-   cd <repository_directory>
-   \``
+   git clone https://github.com/kubbur/ssh_tool/
+   cd ssh_tool
 
 2. Run the installation script:
-   \``bash
    ./install.sh
-   \``
 
 3. Reload your terminal environment:
-   \``bash
    source ~/.zshrc
-   \``
 
 4. Start using the tool! For example:
-   \``bash
-   ssh -l   # List registered hosts
-   ssh -r <host>   # Remove a host
-   ssh <host>   # Connect to or register a host
-   \``
+   ssh -l   # List registered hosts  
+   ssh -r <host>   # Remove a host  
+   ssh <host>   # Connect to or register a host  
 
 ## Usage
 The script integrates directly with the `ssh` command.
 
 ### Commands:
-- **Register a host**:
-  \``bash
-  ssh <host> [username]
-  \``
+- **Register a host**:  
+  ssh <host> [username]  
   If the host isn't registered, the script will guide you through the process.
 
-- **Remove a host**:
-  \``bash
-  ssh -r <host>
-  \``
+- **Remove a host**:  
+  ssh -r <host>  
   Deletes the host's entry from `~/.ssh/config`, removes its key from `authorized_keys` on the remote host, and clears it from `known_hosts`.
 
-- **List registered hosts**:
-  \``bash
-  ssh -l
-  \``
+- **List registered hosts**:  
+  ssh -l  
 
-- **Edit the configuration file**:
-  \``bash
-  ssh -e
-  \``
+- **Edit the configuration file**:  
+  ssh -e  
   Opens `~/.ssh/config` in `nano` for manual adjustments.
 
 ### Autocompletion:
@@ -75,17 +56,13 @@ Zsh autocompletion is enabled for hostnames in `~/.ssh/config`. Type `ssh <parti
 Run the `uninstall.sh` script to remove the utility and restore original files.
 
 ### Steps:
-1. Navigate to the repository directory:
-   \``bash
-   cd <repository_directory>
-   \``
+1. Navigate to the repository directory:  
+   cd ssh_tool
 
-2. Run the uninstallation script:
-   \``bash
+2. Run the uninstallation script:  
    ./uninstall.sh
-   \``
 
-3. Confirm restoration:
+3. Confirm restoration:  
    - Check `~/.ssh/config` and `known_hosts` for backups in `~/.ssh/backups`.
 
 ## Notes
