@@ -19,13 +19,18 @@ Run the `install.sh` script to install the utility and make it accessible as the
    git clone https://github.com/kubbur/ssh_tool/
    cd ssh_tool
 
-2. Run the installation script:
+2. add x to install.sh
+   chmod +x install.sh
+
+3. pray to a god of your choosing
+
+4. Run the installation script:
    ./install.sh
 
-3. Reload your terminal environment:
+5. Reload your terminal environment:
    source ~/.zshrc
 
-4. Start using the tool! For example:
+6. Start using the tool! For example:
    ssh -l   # List registered hosts  
    ssh -r <host>   # Remove a host  
    ssh <host>   # Connect to or register a host  
