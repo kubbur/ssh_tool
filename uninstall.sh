@@ -46,7 +46,7 @@ else
     echo "$UNINSTALL_SCRIPT not found. Skipping."
 fi
 
-# Remove the SSH wrapper in /usr/local/bin
+# Restore or remove the SSH wrapper
 if [ -f "$SSH_WRAPPER.bak" ]; then
     echo "Restoring original ssh from backup ..."
     sudo mv "$SSH_WRAPPER.bak" "$SSH_WRAPPER"
@@ -54,6 +54,12 @@ if [ -f "$SSH_WRAPPER.bak" ]; then
 elif [ -f "$SSH_WRAPPER" ]; then
     echo "Removing custom SSH wrapper ..."
     sudo rm "$SSH_WRAPPER"
+fi
+
+# Verify default SSH binary exists
+if ! command -v ssh &>/dev/null; then
+    echo "SSH binary missing. Restoring default SSH..."
+    sudo ln -sf /usr/bin/ssh "$SSH_WRAPPER"
 fi
 
 # Remove the autocompletion snippet from ~/.zshrc
@@ -73,10 +79,17 @@ else
 fi
 
 # Reload Zsh configuration
-echo "Reloading Zsh configuration..."
-if command -v compinit &>/dev/null; then
-    autoload -Uz compinit
-    compinit
+if [ -f "$ZSHRC" ]; then
+    echo "Reloading Zsh configuration..."
+    source "$ZSHRC"
+else
+    echo "Zsh configuration file not found. Skipping reload."
+fi
+
+# Verify terminal restoration
+if ! command -v ssh &>/dev/null; then
+    echo "Error: SSH command is not functioning. Please check manually."
+    exit 1
 fi
 
 echo "Uninstallation complete!"
