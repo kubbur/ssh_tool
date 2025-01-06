@@ -3,35 +3,37 @@
 # Install script for macOS
 set -e
 
-INSTALL_PATH="/usr/local/bin"
-SCRIPT_TARGET="$INSTALL_PATH/ssh_register"
-SSH_WRAPPER="$INSTALL_PATH/ssh"
-ZSHRC="$HOME/.zshrc"
+TOOL_DIR="/usr/local/bin/ssh_tool"
+MAIN_SCRIPT="$TOOL_DIR/ssh_register"
+UNINSTALL_SCRIPT="$TOOL_DIR/uninstall.sh"
+BACKUP_DIR="$TOOL_DIR/backups"
 CONFIG_FILE="$HOME/.ssh/config"
-BACKUP_DIR="$HOME/.ssh/backups"
 KNOWN_HOSTS="$HOME/.ssh/known_hosts"
+SSH_WRAPPER="/usr/local/bin/ssh"
+ZSHRC="$HOME/.zshrc"
 
 echo "Starting installation process..."
 
-# Create backup directory if it doesn't exist
-mkdir -p "$BACKUP_DIR"
+# Create tool directory and backup directory
+sudo mkdir -p "$TOOL_DIR"
+sudo mkdir -p "$BACKUP_DIR"
 
 # Backup known_hosts
 if [ -f "$KNOWN_HOSTS" ]; then
     echo "Backing up known_hosts to $BACKUP_DIR/known_hosts.bak ..."
-    cp "$KNOWN_HOSTS" "$BACKUP_DIR/known_hosts.bak"
+    sudo cp "$KNOWN_HOSTS" "$BACKUP_DIR/known_hosts.bak"
 fi
 
 # Backup ~/.ssh/config
 if [ -f "$CONFIG_FILE" ]; then
     echo "Backing up $CONFIG_FILE to $BACKUP_DIR/config.bak ..."
-    cp "$CONFIG_FILE" "$BACKUP_DIR/config.bak"
+    sudo cp "$CONFIG_FILE" "$BACKUP_DIR/config.bak"
 fi
 
 # Add recommended lines to ~/.ssh/config
 if ! grep -q "AddKeysToAgent yes" "$CONFIG_FILE" 2>/dev/null; then
     echo "Adding recommended Host * lines to $CONFIG_FILE ..."
-    cat <<EOF >>"$CONFIG_FILE"
+    sudo bash -c "cat <<EOF >>$CONFIG_FILE
 
 Host *
     AddKeysToAgent yes
@@ -39,13 +41,18 @@ Host *
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
 
-EOF
+EOF"
 fi
 
 # Install ssh_register.sh
-echo "Installing ssh_register.sh to $SCRIPT_TARGET ..."
-sudo cp ssh_register.sh "$SCRIPT_TARGET"
-sudo chmod +x "$SCRIPT_TARGET"
+echo "Installing ssh_register.sh to $MAIN_SCRIPT ..."
+sudo cp ssh_register.sh "$MAIN_SCRIPT"
+sudo chmod +x "$MAIN_SCRIPT"
+
+# Install uninstall.sh
+echo "Installing uninstall.sh to $UNINSTALL_SCRIPT ..."
+sudo cp uninstall.sh "$UNINSTALL_SCRIPT"
+sudo chmod +x "$UNINSTALL_SCRIPT"
 
 # Backup /usr/local/bin/ssh if it exists
 if [ -f "$SSH_WRAPPER" ]; then
@@ -57,8 +64,8 @@ fi
 echo "Creating custom ssh wrapper at $SSH_WRAPPER ..."
 sudo bash -c "cat <<EOF >$SSH_WRAPPER
 #!/usr/bin/env bash
-if [[ \"\$1\" == \"-l\" || \"\$1\" == \"-r\" || \"\$1\" == \"-e\" ]]; then
-    $SCRIPT_TARGET \"\$@\"
+if [[ \"\$1\" == \"-l\" || \"\$1\" == \"-r\" || \"\$1\" == \"-e\" || \"\$1\" == \"-uninstall\" ]]; then
+    $MAIN_SCRIPT \"\$@\"
 else
     /usr/bin/ssh \"\$@\"
 fi
@@ -76,8 +83,8 @@ _ssh_hosts() {
 }
 compdef _ssh_hosts ssh
 
-# Initialize compinit only if not already done
-if ! type compdef &>/dev/null; then
+# Ensure compinit is loaded only once
+if ! (typeset -f compinit &>/dev/null && command compinit -l &>/dev/null); then
     autoload -Uz compinit
     compinit
 fi
