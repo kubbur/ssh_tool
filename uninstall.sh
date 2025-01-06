@@ -54,14 +54,14 @@ else
     echo "$UNINSTALL_SCRIPT not found. Skipping."
 fi
 
-# Restore or remove the SSH wrapper
-if [ -f "$SSH_WRAPPER.bak" ]; then
-    echo "Restoring original ssh from backup ..."
-    mv "$SSH_WRAPPER.bak" "$SSH_WRAPPER"
+# Restore original Mach-O ssh binary
+if [ -f /usr/local/bin/ssh.system_backup ]; then
+    echo "Restoring original Mach-O ssh binary ..."
+    mv /usr/local/bin/ssh.system_backup "$SSH_WRAPPER"
     chmod +x "$SSH_WRAPPER"
-elif [ -f "$SSH_WRAPPER" ]; then
-    echo "Removing custom SSH wrapper ..."
-    rm "$SSH_WRAPPER"
+elif [ ! -f "$SSH_WRAPPER" ]; then
+    echo "No custom SSH wrapper or Mach-O backup found. Restoring default system SSH..."
+    ln -sf /usr/bin/ssh "$SSH_WRAPPER"
 fi
 
 # Remove the tool directory
