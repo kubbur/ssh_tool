@@ -46,12 +46,14 @@ function register_host() {
     local host=$1
     local username=$2
 
+    # Check if the host is reachable
     ping -c 1 -W 1 "$host" >/dev/null 2>&1
     if [ $? -ne 0 ]; then
         echo "Error: Host $host is not reachable."
         exit 1
     fi
 
+    # Check if the host is already configured
     if grep -q "Host $host" "$CONFIG_FILE" || grep -q "Hostname $host" "$CONFIG_FILE"; then
         echo "$host is already configured. Using existing settings."
         ssh "$host" || handle_host_key_change "$host"
@@ -60,10 +62,12 @@ function register_host() {
 
     read -p "Do you want to register this host? (y/n) " register
     if [[ $register == "y" ]]; then
+        # Prompt for username if not provided
         if [ -z "$username" ]; then
             read -p "Enter the username for $host: " username
         fi
 
+        # Determine if host and hostname should differ
         read -p "Should 'host' and 'hostname' be the same? (y/n) " same_host
         if [[ $same_host == "n" ]]; then
             read -p "Enter the Host (e.g., an alias): " host_alias
@@ -77,15 +81,27 @@ function register_host() {
         ssh-copy-id "$username@$hostname"
         if [ $? -ne 0 ]; then
             echo "Error: Failed to install SSH key on $hostname."
-            exit 1
+            read -p "Do you want to retry with -f to force the installation? (y/n) " force
+            if [[ $force == "y" ]]; then
+                ssh-copy-id -f "$username@$hostname"
+                if [ $? -ne 0 ]; then
+                    echo "Error: Forced key installation also failed. Exiting."
+                    exit 1
+                fi
+            else
+                echo "Key installation skipped. Exiting."
+                exit 1
+            fi
         fi
 
         echo -e "\nHost $host_alias\n    Hostname $hostname\n    User $username" >> "$CONFIG_FILE"
         echo "Host registered as $host_alias."
         echo "You can now login using: ssh $host_alias"
 
+        # Attempt login
         ssh "$host_alias"
     else
+        # Proceed with normal login
         if [ -z "$username" ]; then
             read -p "Enter the username for $host: " username
         fi
