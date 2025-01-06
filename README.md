@@ -25,7 +25,7 @@ Run the `install.sh` script to install the utility and make it accessible as the
 3. pray to a god of your choosing
 
 4. Run the installation script:
-   `./install.sh`
+   `sudo ./install.sh`
 
 5. Reload your terminal environment:
    `source ~/.zshrc`
