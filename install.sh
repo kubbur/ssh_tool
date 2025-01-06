@@ -10,6 +10,7 @@ BACKUP_DIR="$TOOL_DIR/backups"
 CONFIG_FILE="$HOME/.ssh/config"
 KNOWN_HOSTS="$HOME/.ssh/known_hosts"
 SSH_WRAPPER="/usr/local/bin/ssh"
+SSH_SYSTEM_BACKUP="/usr/local/bin/ssh.system_backup"
 ZSHRC="$HOME/.zshrc"
 
 echo "Starting installation process..."
@@ -67,18 +68,24 @@ echo "Installing uninstall.sh to $UNINSTALL_SCRIPT ..."
 cp uninstall.sh "$UNINSTALL_SCRIPT"
 chmod +x "$UNINSTALL_SCRIPT"
 
-# Backup /usr/local/bin/ssh if it exists
-if [ -f "$SSH_WRAPPER" ]; then
-    echo "Backing up existing ssh wrapper to /usr/local/bin/ssh.bak ..."
-    cp "$SSH_WRAPPER" "$SSH_WRAPPER.bak"
+# Backup and handle the Mach-O ssh binary
+if [ -f "$SSH_WRAPPER" ] && ! [ -L "$SSH_WRAPPER" ]; then
+    echo "Backing up existing Mach-O SSH binary to $SSH_SYSTEM_BACKUP ..."
+    mv "$SSH_WRAPPER" "$SSH_SYSTEM_BACKUP"
+elif [ -L "$SSH_WRAPPER" ]; then
+    echo "Removing existing SSH wrapper symlink ..."
+    rm "$SSH_WRAPPER"
 fi
 
-# Create custom ssh wrapper
-echo "Creating custom ssh wrapper at $SSH_WRAPPER ..."
+# Create custom SSH wrapper
+echo "Creating custom SSH wrapper at $SSH_WRAPPER ..."
 cat <<EOF >"$SSH_WRAPPER"
 #!/usr/bin/env bash
-if [[ "\$1" == "-l" || "\$1" == "-r" || "\$1" == "-e" || "\$1" == "-uninstall" ]]; then
-    $MAIN_SCRIPT "\$@"
+if [[ -z "\$1" ]]; then
+    # Call ssh_register if no arguments are provided
+    /usr/local/bin/ssh_tool/ssh_register
+elif [[ "\$1" == "-l" || "\$1" == "-r" || "\$1" == "-e" || "\$1" == "-uninstall" ]]; then
+    /usr/local/bin/ssh_tool/ssh_register "\$@"
 else
     /usr/bin/ssh "\$@"
 fi
