@@ -11,6 +11,7 @@ CONFIG_FILE="$HOME/.ssh/config"
 KNOWN_HOSTS="$HOME/.ssh/known_hosts"
 ZSHRC="$HOME/.zshrc"
 SSH_WRAPPER="/usr/local/bin/ssh"
+SSH_BACKUP="/usr/local/bin/ssh.system_backup"
 
 echo "Starting uninstallation process..."
 
@@ -41,7 +42,7 @@ fi
 # Remove the main script
 if [ -f "$MAIN_SCRIPT" ]; then
     echo "Removing $MAIN_SCRIPT ..."
-    rm "$MAIN_SCRIPT"
+    sudo rm "$MAIN_SCRIPT"
 else
     echo "$MAIN_SCRIPT not found. Skipping."
 fi
@@ -49,25 +50,38 @@ fi
 # Remove the uninstall script
 if [ -f "$UNINSTALL_SCRIPT" ]; then
     echo "Removing $UNINSTALL_SCRIPT ..."
-    rm "$UNINSTALL_SCRIPT"
+    sudo rm "$UNINSTALL_SCRIPT"
 else
     echo "$UNINSTALL_SCRIPT not found. Skipping."
 fi
 
-# Restore original Mach-O ssh binary
-if [ -f /usr/local/bin/ssh.system_backup ]; then
+# Restore or remove the SSH wrapper
+if [ -f "$SSH_BACKUP" ]; then
     echo "Restoring original Mach-O ssh binary ..."
-    mv /usr/local/bin/ssh.system_backup "$SSH_WRAPPER"
-    chmod +x "$SSH_WRAPPER"
-elif [ ! -f "$SSH_WRAPPER" ]; then
-    echo "No custom SSH wrapper or Mach-O backup found. Restoring default system SSH..."
-    ln -sf /usr/bin/ssh "$SSH_WRAPPER"
+    sudo mv "$SSH_BACKUP" "$SSH_WRAPPER"
+    sudo chmod +x "$SSH_WRAPPER"
+elif [ -L "$SSH_WRAPPER" ]; then
+    echo "SSH wrapper is a symlink. Removing it ..."
+    sudo rm "$SSH_WRAPPER"
+    echo "Restoring default system SSH..."
+    sudo ln -sf /usr/bin/ssh "$SSH_WRAPPER"
+else
+    echo "No backup or symlink found for SSH. Restoring default system SSH..."
+    sudo ln -sf /usr/bin/ssh "$SSH_WRAPPER"
+fi
+
+# Remove the autocompletion snippet from ~/.zshrc
+if grep -q "_ssh_hosts" "$ZSHRC"; then
+    echo "Removing Zsh autocompletion snippet from $ZSHRC ..."
+    sed -i '' '/# SSH autocompletion for custom script/,+7d' "$ZSHRC"
+else
+    echo "Zsh autocompletion snippet not found in $ZSHRC. Skipping."
 fi
 
 # Remove the tool directory
 if [ -d "$TOOL_DIR" ]; then
     echo "Removing tool directory $TOOL_DIR ..."
-    rm -rf "$TOOL_DIR"
+    sudo rm -rf "$TOOL_DIR"
 else
     echo "$TOOL_DIR not found. Skipping."
 fi
@@ -82,10 +96,8 @@ fi
 
 # Verify terminal restoration
 if ! command -v ssh &>/dev/null; then
-    echo "Error: SSH command is not functioning correctly. Please check manually."
+    echo "Error: SSH command is not functioning. Please check manually."
     exit 1
-else
-    echo "SSH command is functioning as expected."
 fi
 
 echo "Uninstallation complete!"
