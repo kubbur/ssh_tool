@@ -36,7 +36,14 @@ if [ -f "$BACKUP_DIR/zshrc.bak" ]; then
     echo "Restoring backup of $ZSHRC ..."
     cp "$BACKUP_DIR/zshrc.bak" "$ZSHRC"
 else
-    echo "No backup found for $ZSHRC. Skipping."
+    echo "No backup found for $ZSHRC. Attempting to clean modifications manually."
+    # Remove the autocompletion snippet from ~/.zshrc
+    if grep -q "_ssh_hosts" "$ZSHRC"; then
+        echo "Removing Zsh autocompletion snippet from $ZSHRC ..."
+        sed -i '' '/# SSH autocompletion for custom script/,+7d' "$ZSHRC"
+    else
+        echo "Zsh autocompletion snippet not found in $ZSHRC. Skipping."
+    fi
 fi
 
 # Remove the main script
@@ -68,14 +75,6 @@ elif [ -L "$SSH_WRAPPER" ]; then
 else
     echo "No backup or symlink found for SSH. Restoring default system SSH..."
     sudo ln -sf /usr/bin/ssh "$SSH_WRAPPER"
-fi
-
-# Remove the autocompletion snippet from ~/.zshrc
-if grep -q "_ssh_hosts" "$ZSHRC"; then
-    echo "Removing Zsh autocompletion snippet from $ZSHRC ..."
-    sed -i '' '/# SSH autocompletion for custom script/,+7d' "$ZSHRC"
-else
-    echo "Zsh autocompletion snippet not found in $ZSHRC. Skipping."
 fi
 
 # Remove the tool directory
