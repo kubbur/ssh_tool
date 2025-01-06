@@ -63,18 +63,25 @@ chmod +x "$UNINSTALL_SCRIPT"
 
 # Backup /usr/local/bin/ssh if it exists
 if [ -f "$SSH_WRAPPER" ]; then
-    echo "Backing up existing ssh wrapper to /usr/local/bin/ssh.bak ..."
-    cp "$SSH_WRAPPER" "$SSH_WRAPPER.bak"
+    echo "Backing up existing ssh wrapper to /usr/local/bin/ssh.system_backup ..."
+    mv "$SSH_WRAPPER" /usr/local/bin/ssh.system_backup
 fi
 
 # Create custom ssh wrapper
 echo "Creating custom ssh wrapper at $SSH_WRAPPER ..."
-cat <<EOF >"$SSH_WRAPPER"
+cat <<'EOF' >"$SSH_WRAPPER"
 #!/usr/bin/env bash
-if [[ "\$1" == "-l" || "\$1" == "-r" || "\$1" == "-e" || "\$1" == "-uninstall" ]]; then
-    $MAIN_SCRIPT "\$@"
+# Custom SSH Wrapper
+
+if [[ -z "$1" ]]; then
+    # No arguments provided, call ssh_register to show the help table
+    /usr/local/bin/ssh_tool/ssh_register
+elif [[ "$1" == "-l" || "$1" == "-r" || "$1" == "-e" || "$1" == "-uninstall" ]]; then
+    # Redirect specific flags to ssh_register
+    /usr/local/bin/ssh_tool/ssh_register "$@"
 else
-    /usr/bin/ssh "\$@"
+    # Default to the system ssh binary
+    /usr/bin/ssh "$@"
 fi
 EOF
 chmod +x "$SSH_WRAPPER"
@@ -84,17 +91,17 @@ if ! grep -q "_ssh_hosts" "$ZSHRC"; then
     echo "Adding Zsh autocompletion snippet to $ZSHRC ..."
     cat <<'EOF' >>"$ZSHRC"
 
-# SSH autocompletion for custom script
-_ssh_hosts() {
-    compadd $(grep -E "^Host" ~/.ssh/config | awk '{print $2}')
-}
-compdef _ssh_hosts ssh
-
 # Ensure compinit is loaded only once
 if ! (typeset -f compinit &>/dev/null && command compinit -l &>/dev/null); then
     autoload -Uz compinit
     compinit
 fi
+
+# SSH autocompletion for custom script
+_ssh_hosts() {
+    compadd $(grep -E "^Host" ~/.ssh/config | awk '{print $2}')
+}
+compdef _ssh_hosts ssh
 
 EOF
 fi
