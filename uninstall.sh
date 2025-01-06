@@ -74,6 +74,9 @@ fi
 
 # Reload Zsh configuration
 echo "Reloading Zsh configuration..."
-source "$ZSHRC"
+if command -v compinit &>/dev/null; then
+    autoload -Uz compinit
+    compinit
+fi
 
 echo "Uninstallation complete!"
