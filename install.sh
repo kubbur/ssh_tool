@@ -37,6 +37,12 @@ if [ -f "$CONFIG_FILE" ]; then
     cp "$CONFIG_FILE" "$BACKUP_DIR/config.bak"
 fi
 
+# Backup ~/.zshrc
+if [ -f "$ZSHRC" ]; then
+    echo "Backing up $ZSHRC to $BACKUP_DIR/zshrc.bak ..."
+    cp "$ZSHRC" "$BACKUP_DIR/zshrc.bak"
+fi
+
 # Add recommended lines to ~/.ssh/config
 if ! grep -q "AddKeysToAgent yes" "$CONFIG_FILE" 2>/dev/null; then
     echo "Adding recommended Host * lines to $CONFIG_FILE ..."
@@ -63,25 +69,18 @@ chmod +x "$UNINSTALL_SCRIPT"
 
 # Backup /usr/local/bin/ssh if it exists
 if [ -f "$SSH_WRAPPER" ]; then
-    echo "Backing up existing ssh wrapper to /usr/local/bin/ssh.system_backup ..."
-    mv "$SSH_WRAPPER" /usr/local/bin/ssh.system_backup
+    echo "Backing up existing ssh wrapper to /usr/local/bin/ssh.bak ..."
+    cp "$SSH_WRAPPER" "$SSH_WRAPPER.bak"
 fi
 
 # Create custom ssh wrapper
 echo "Creating custom ssh wrapper at $SSH_WRAPPER ..."
-cat <<'EOF' >"$SSH_WRAPPER"
+cat <<EOF >"$SSH_WRAPPER"
 #!/usr/bin/env bash
-# Custom SSH Wrapper
-
-if [[ -z "$1" ]]; then
-    # No arguments provided, call ssh_register to show the help table
-    /usr/local/bin/ssh_tool/ssh_register
-elif [[ "$1" == "-l" || "$1" == "-r" || "$1" == "-e" || "$1" == "-uninstall" ]]; then
-    # Redirect specific flags to ssh_register
-    /usr/local/bin/ssh_tool/ssh_register "$@"
+if [[ "\$1" == "-l" || "\$1" == "-r" || "\$1" == "-e" || "\$1" == "-uninstall" ]]; then
+    $MAIN_SCRIPT "\$@"
 else
-    # Default to the system ssh binary
-    /usr/bin/ssh "$@"
+    /usr/bin/ssh "\$@"
 fi
 EOF
 chmod +x "$SSH_WRAPPER"
@@ -91,17 +90,17 @@ if ! grep -q "_ssh_hosts" "$ZSHRC"; then
     echo "Adding Zsh autocompletion snippet to $ZSHRC ..."
     cat <<'EOF' >>"$ZSHRC"
 
-# Ensure compinit is loaded only once
-if ! (typeset -f compinit &>/dev/null && command compinit -l &>/dev/null); then
-    autoload -Uz compinit
-    compinit
-fi
-
 # SSH autocompletion for custom script
 _ssh_hosts() {
     compadd $(grep -E "^Host" ~/.ssh/config | awk '{print $2}')
 }
 compdef _ssh_hosts ssh
+
+# Ensure compinit is loaded only once
+if ! (typeset -f compinit &>/dev/null && command compinit -l &>/dev/null); then
+    autoload -Uz compinit
+    compinit
+fi
 
 EOF
 fi
