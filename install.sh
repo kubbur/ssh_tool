@@ -97,18 +97,17 @@ if ! grep -q "_ssh_hosts" "$ZSHRC"; then
     echo "Adding Zsh autocompletion snippet to $ZSHRC ..."
     cat <<'EOF' >>"$ZSHRC"
 
-# SSH autocompletion for custom script
-_ssh_hosts() {
-    compadd $(grep -E "^Host" ~/.ssh/config | awk '{print $2}')
-}
-compdef _ssh_hosts ssh
-
 # Ensure compinit is loaded only once
 if ! (typeset -f compinit &>/dev/null && command compinit -l &>/dev/null); then
     autoload -Uz compinit
     compinit
 fi
 
+# SSH autocompletion for custom script
+_ssh_hosts() {
+    compadd $(grep -E "^Host" ~/.ssh/config | awk '{print $2}')
+}
+compdef _ssh_hosts ssh
 EOF
 fi
 
