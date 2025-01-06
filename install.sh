@@ -87,4 +87,3 @@ echo "Reloading Zsh configuration..."
 source "$ZSHRC"
 
 echo "Installation complete!"
-
