@@ -16,8 +16,8 @@ Run the `install.sh` script to install the utility and make it accessible as the
 
 ### Steps:
 1. Clone the repository:
-   git clone https://github.com/kubbur/ssh_tool/ &&
-   cd ssh_tool
+   `git clone https://github.com/kubbur/ssh_tool/ &&
+   cd ssh_tool`
 
 2. add x to install.sh:
    `chmod +x install.sh`
