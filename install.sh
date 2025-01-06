@@ -76,8 +76,11 @@ _ssh_hosts() {
 }
 compdef _ssh_hosts ssh
 
-autoload -Uz compinit
-compinit
+# Initialize compinit only if not already done
+if ! type compdef &>/dev/null; then
+    autoload -Uz compinit
+    compinit
+fi
 
 EOF
 fi
