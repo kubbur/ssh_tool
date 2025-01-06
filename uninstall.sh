@@ -30,10 +30,18 @@ else
     echo "No backup found for $KNOWN_HOSTS. Skipping."
 fi
 
+# Restore backup of ~/.zshrc
+if [ -f "$BACKUP_DIR/zshrc.bak" ]; then
+    echo "Restoring backup of $ZSHRC ..."
+    cp "$BACKUP_DIR/zshrc.bak" "$ZSHRC"
+else
+    echo "No backup found for $ZSHRC. Skipping."
+fi
+
 # Remove the main script
 if [ -f "$MAIN_SCRIPT" ]; then
     echo "Removing $MAIN_SCRIPT ..."
-    sudo rm "$MAIN_SCRIPT"
+    rm "$MAIN_SCRIPT"
 else
     echo "$MAIN_SCRIPT not found. Skipping."
 fi
@@ -41,7 +49,7 @@ fi
 # Remove the uninstall script
 if [ -f "$UNINSTALL_SCRIPT" ]; then
     echo "Removing $UNINSTALL_SCRIPT ..."
-    sudo rm "$UNINSTALL_SCRIPT"
+    rm "$UNINSTALL_SCRIPT"
 else
     echo "$UNINSTALL_SCRIPT not found. Skipping."
 fi
@@ -49,31 +57,17 @@ fi
 # Restore or remove the SSH wrapper
 if [ -f "$SSH_WRAPPER.bak" ]; then
     echo "Restoring original ssh from backup ..."
-    sudo mv "$SSH_WRAPPER.bak" "$SSH_WRAPPER"
-    sudo chmod +x "$SSH_WRAPPER"
+    mv "$SSH_WRAPPER.bak" "$SSH_WRAPPER"
+    chmod +x "$SSH_WRAPPER"
 elif [ -f "$SSH_WRAPPER" ]; then
     echo "Removing custom SSH wrapper ..."
-    sudo rm "$SSH_WRAPPER"
-fi
-
-# Verify default SSH binary exists
-if ! command -v ssh &>/dev/null; then
-    echo "SSH binary missing. Restoring default SSH..."
-    sudo ln -sf /usr/bin/ssh "$SSH_WRAPPER"
-fi
-
-# Remove the autocompletion snippet from ~/.zshrc
-if grep -q "_ssh_hosts" "$ZSHRC"; then
-    echo "Removing Zsh autocompletion snippet from $ZSHRC ..."
-    sed -i '' '/# SSH autocompletion for custom script/,+6d' "$ZSHRC"
-else
-    echo "Zsh autocompletion snippet not found in $ZSHRC. Skipping."
+    rm "$SSH_WRAPPER"
 fi
 
 # Remove the tool directory
 if [ -d "$TOOL_DIR" ]; then
     echo "Removing tool directory $TOOL_DIR ..."
-    sudo rm -rf "$TOOL_DIR"
+    rm -rf "$TOOL_DIR"
 else
     echo "$TOOL_DIR not found. Skipping."
 fi
@@ -88,8 +82,10 @@ fi
 
 # Verify terminal restoration
 if ! command -v ssh &>/dev/null; then
-    echo "Error: SSH command is not functioning. Please check manually."
+    echo "Error: SSH command is not functioning correctly. Please check manually."
     exit 1
+else
+    echo "SSH command is functioning as expected."
 fi
 
 echo "Uninstallation complete!"
