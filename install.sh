@@ -112,18 +112,15 @@ EOF
 
 chmod +x "$SSH_WRAPPER"
 
-# Add autocompletion snippet if user is truly in Zsh
-# (Some minimal shells can cause "autoload: command not found")
+# Since we're on macOS, let's forcibly add the Zsh completion snippet if missing.
 if [ -f "$ZSHRC" ]; then
-    # A quick test: is $SHELL or $ZSH_VERSION set to zsh?
-    if [[ "$SHELL" == *"zsh" ]] || [[ -n "$ZSH_VERSION" ]]; then
-        if ! grep -q "_ssh_hosts" "$ZSHRC"; then
-            echo "Adding Zsh autocompletion snippet to $ZSHRC ..."
-            cat <<'ACEOF' >>"$ZSHRC"
+    if ! grep -q "_ssh_hosts" "$ZSHRC"; then
+        echo "Adding Zsh autocompletion snippet to $ZSHRC ..."
+        cat <<'ACEOF' >>"$ZSHRC"
 
 # SSH Tool autocompletion for custom script
+# Force load compinit only if it's available
 if type compinit &>/dev/null; then
-    # Ensure compinit is loaded
     autoload -Uz compinit
     compinit
 
@@ -136,17 +133,12 @@ else
 fi
 
 ACEOF
-        fi
-    else
-        echo "It appears you're not using Zsh, or \$ZSH_VERSION is not set."
-        echo "Skipping Zsh autocompletion snippet."
     fi
 fi
 
 # Reload Zsh configuration
 echo "Reloading Zsh configuration..."
 if [[ -f "$ZSHRC" ]]; then
-    # We'll try sourcing, but if user isn't in a true Zsh environment, it's harmless
     source "$ZSHRC" || true
 else
     echo "Warning: .zshrc file not found. Please reload your terminal manually."
