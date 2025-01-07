@@ -31,6 +31,7 @@ function remove_host() {
 
     # Remove the host from ~/.ssh/config
     if grep -q "Host $host" "$CONFIG_FILE"; then
+        # The +2 assumes each host entry is 3 lines: Host line + 2 lines (Hostname/User)
         sed -i '' "/Host $host/,+2d" "$CONFIG_FILE"
         echo "Removed $host from $CONFIG_FILE."
     else
@@ -59,12 +60,19 @@ function register_host() {
         return
     fi
 
+    # >>> NEW: Prompt the user whether they want to actually register the host
+    read -rp "Do you want to register this host ($host)? (y/n): " register
+    if [[ $register != "y" ]]; then
+        echo "Skipping host registration."
+        exit 0
+    fi
+
     # Prompt for username if not provided
     if [ -z "$username" ]; then
         read -rp "Enter the username for $host: " username
     fi
 
-    # Determine alias and hostname
+    # >>> NEW: Ask if Host and Hostname should be the same
     read -rp "Should 'host' and 'hostname' be the same? (y/n): " same_host
     if [[ $same_host == "n" ]]; then
         read -rp "Enter the Host (e.g., an alias): " host_alias
@@ -104,6 +112,7 @@ function register_host() {
         echo "Error: Failed to append $host_alias to $CONFIG_FILE. Exiting."
         exit 1
     fi
+
     echo "Host $host_alias saved in $CONFIG_FILE."
 
     # Attempt to connect
@@ -147,13 +156,13 @@ function show_help_table() {
     echo
     echo "Available Commands:"
     echo "--------------------------------------------"
-    echo "| Flag       | Function       | Description                |"
+    echo "| Flag       | Function         | Description                 |"
     echo "--------------------------------------------"
-    echo "| -r         | remove_host    | Remove a host              |"
-    echo "| -l         | list_hosts     | List hosts                 |"
-    echo "| -e         | edit_config_file | Edit config file          |"
-    echo "| <host>     | register_host  | Register a host            |"
-    echo "| -uninstall | uninstall_tool | Uninstall and restore backups|"
+    echo "| -r         | remove_host      | Remove a host               |"
+    echo "| -l         | list_hosts       | List hosts                  |"
+    echo "| -e         | edit_config_file | Edit config file            |"
+    echo "| <host>     | register_host    | Register a host             |"
+    echo "| -uninstall | uninstall_tool   | Uninstall and restore       |"
     echo "--------------------------------------------"
     echo "Run with no arguments to see this help table."
 }
