@@ -21,30 +21,30 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-# Create tool directory and backup directory
+# 1) Create tool directory and backup directory
 echo "Creating tool directory and backup directory at $TOOL_DIR..."
 mkdir -p "$TOOL_DIR"
 mkdir -p "$BACKUP_DIR"
 
-# Backup known_hosts
+# 2) Backup known_hosts
 if [ -f "$KNOWN_HOSTS" ]; then
     echo "Backing up known_hosts to $BACKUP_DIR/known_hosts.bak ..."
     cp "$KNOWN_HOSTS" "$BACKUP_DIR/known_hosts.bak"
 fi
 
-# Backup ~/.ssh/config
+# 3) Backup ~/.ssh/config
 if [ -f "$CONFIG_FILE" ]; then
     echo "Backing up $CONFIG_FILE to $BACKUP_DIR/config.bak ..."
     cp "$CONFIG_FILE" "$BACKUP_DIR/config.bak"
 fi
 
-# Backup ~/.zshrc
+# 4) Backup ~/.zshrc
 if [ -f "$ZSHRC" ]; then
     echo "Backing up $ZSHRC to $BACKUP_DIR/zshrc.bak ..."
     cp "$ZSHRC" "$BACKUP_DIR/zshrc.bak"
 fi
 
-# Add recommended lines to ~/.ssh/config
+# 5) Append recommended lines to ~/.ssh/config (if not already there)
 if ! grep -q "AddKeysToAgent yes" "$CONFIG_FILE" 2>/dev/null; then
     echo "Adding recommended Host * lines to $CONFIG_FILE ..."
     cat <<EOF >>"$CONFIG_FILE"
@@ -58,17 +58,17 @@ Host *
 EOF
 fi
 
-# Install ssh_register.sh
+# 6) Install ssh_register.sh
 echo "Installing ssh_register.sh to $MAIN_SCRIPT ..."
 cp ssh_register.sh "$MAIN_SCRIPT"
 chmod +x "$MAIN_SCRIPT"
 
-# Install uninstall.sh
+# 7) Install uninstall.sh
 echo "Installing uninstall.sh to $UNINSTALL_SCRIPT ..."
 cp uninstall.sh "$UNINSTALL_SCRIPT"
 chmod +x "$UNINSTALL_SCRIPT"
 
-# Backup and handle the Mach-O ssh binary
+# 8) Backup and handle the Mach-O SSH binary
 if [ -f "$SSH_WRAPPER" ] && ! [ -L "$SSH_WRAPPER" ]; then
     echo "Backing up existing Mach-O SSH binary to $SSH_SYSTEM_BACKUP ..."
     mv "$SSH_WRAPPER" "$SSH_SYSTEM_BACKUP"
@@ -77,7 +77,8 @@ elif [ -L "$SSH_WRAPPER" ]; then
     rm "$SSH_WRAPPER"
 fi
 
-# Create custom SSH wrapper that checks ~/.ssh/config for the host:
+# 9) Create custom SSH wrapper
+#    The wrapper checks if the host is in ~/.ssh/config. If not, it calls ssh_register.
 echo "Creating custom SSH wrapper at $SSH_WRAPPER ..."
 cat <<'EOF' >"$SSH_WRAPPER"
 #!/usr/bin/env bash
@@ -87,61 +88,56 @@ SSH_TOOL_SCRIPT="/usr/local/bin/ssh_tool/ssh_register"
 
 host="$1"
 
-# 1) If no arguments, run our tool (shows help)
+# If no arguments, show custom script help
 if [[ -z "$host" ]]; then
     exec "$SSH_TOOL_SCRIPT"
 fi
 
-# 2) If recognized flags (-l, -r, -e, -uninstall), run our tool
+# If recognized flags (-l, -r, -e, -uninstall), go to ssh_register
 case "$host" in
     -l|-r|-e|-uninstall)
         exec "$SSH_TOOL_SCRIPT" "$@"
         ;;
 esac
 
-# 3) Otherwise, check if this "host" is in ~/.ssh/config
-#    (We look for lines like "Host spainscale", "Host spainscale ")
+# Otherwise, check if "host" is in ~/.ssh/config
 if grep -qE "^Host[[:space:]]+$host(\$|[[:space:]])" "$CONFIG_FILE" 2>/dev/null; then
-    # Already in ~/.ssh/config → call system SSH
+    # Host is already configured → real SSH
     exec /usr/bin/ssh "$@"
 else
-    # Not in ~/.ssh/config → call our custom script for interactive registration
+    # Not in ~/.ssh/config → call the register script
     exec "$SSH_TOOL_SCRIPT" "$@"
 fi
 EOF
-
 chmod +x "$SSH_WRAPPER"
 
-# Since we're on macOS, let's forcibly add the Zsh completion snippet if missing.
+# 10) Force-add Zsh completion snippet on macOS, removing the compinit check
 if [ -f "$ZSHRC" ]; then
     if ! grep -q "_ssh_hosts" "$ZSHRC"; then
         echo "Adding Zsh autocompletion snippet to $ZSHRC ..."
         cat <<'ACEOF' >>"$ZSHRC"
 
-# SSH Tool autocompletion for custom script
-# Force load compinit only if it's available
-if type compinit &>/dev/null; then
-    autoload -Uz compinit
-    compinit
+# --- SSH Tool autocompletion snippet ---
+autoload -Uz compinit 2>/dev/null || true
+compinit 2>/dev/null || true
 
-    _ssh_hosts() {
-        compadd $(grep -E "^Host" ~/.ssh/config | awk '{print $2}')
-    }
-    compdef _ssh_hosts ssh
-else
-    echo "Warning: 'compinit' not found. Skipping zsh autocompletion setup."
-fi
+_ssh_hosts() {
+    compadd $(grep -E "^Host" ~/.ssh/config | awk '{print $2}')
+}
+compdef _ssh_hosts ssh
+# --- end of SSH Tool snippet ---
 
 ACEOF
     fi
 fi
 
-# Reload Zsh configuration
+# 11) Reload Zsh configuration
 echo "Reloading Zsh configuration..."
 if [[ -f "$ZSHRC" ]]; then
+    # Sourcing .zshrc can throw harmless errors if you're not truly in zsh
     source "$ZSHRC" || true
 else
-    echo "Warning: .zshrc file not found. Please reload your terminal manually."
+    echo "Warning: $ZSHRC file not found. Please reload your terminal manually."
 fi
 
 echo "Installation complete!"
