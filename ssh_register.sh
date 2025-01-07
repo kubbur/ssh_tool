@@ -47,8 +47,7 @@ function register_host() {
     local username=$2
 
     # Check if the host is reachable
-    ping -c 1 -W 1 "$host" >/dev/null 2>&1
-    if [ $? -ne 0 ]; then
+    if ! ping -c 1 -W 1 "$host" >/dev/null 2>&1; then
         echo "Error: Host $host is not reachable."
         exit 1
     fi
@@ -60,60 +59,62 @@ function register_host() {
         return
     fi
 
-    read -p "Do you want to register this host? (y/n) " register
-    if [[ $register == "y" ]]; then
-        # Prompt for username if not provided
-        if [ -z "$username" ]; then
-            read -p "Enter the username for $host: " username
-        fi
+    # Prompt for username if not provided
+    if [ -z "$username" ]; then
+        read -rp "Enter the username for $host: " username
+    fi
 
-        # Determine if host and hostname should differ
-        read -p "Should 'host' and 'hostname' be the same? (y/n) " same_host
-        if [[ $same_host == "n" ]]; then
-            read -p "Enter the Host (e.g., an alias): " host_alias
-            read -p "Enter the Hostname (e.g., IP or domain): " hostname
-        else
-            host_alias=$host
-            hostname=$host
-        fi
+    # Determine alias and hostname
+    read -rp "Should 'host' and 'hostname' be the same? (y/n): " same_host
+    if [[ $same_host == "n" ]]; then
+        read -rp "Enter the Host (e.g., an alias): " host_alias
+        read -rp "Enter the Hostname (e.g., IP or domain): " hostname
+    else
+        host_alias=$host
+        hostname=$host
+    fi
 
-        echo "Installing SSH key on $hostname..."
-        ssh-copy-id "$username@$hostname"
-        if [ $? -ne 0 ]; then
-            echo "Error: Failed to install SSH key on $hostname."
-            read -p "Do you want to retry with -f to force the installation? (y/n) " force
-            if [[ $force == "y" ]]; then
-                ssh-copy-id -f "$username@$hostname"
-                if [ $? -ne 0 ]; then
-                    echo "Error: Forced key installation also failed. Exiting."
-                    exit 1
-                fi
-            else
-                echo "Key installation skipped. Exiting."
+    # Validate alias and hostname
+    if [[ -z "$host_alias" || -z "$hostname" ]]; then
+        echo "Error: Invalid alias or hostname. Exiting."
+        exit 1
+    fi
+
+    # Add SSH key to the remote host
+    echo "Installing SSH key on $hostname..."
+    ssh-copy-id "$username@$hostname"
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install SSH key on $hostname."
+        read -rp "Do you want to retry with -f to force the installation? (y/n): " force
+        if [[ $force == "y" ]]; then
+            ssh-copy-id -f "$username@$hostname"
+            if [ $? -ne 0 ]; then
+                echo "Error: Forced key installation also failed. Exiting."
                 exit 1
             fi
+        else
+            echo "Key installation skipped. Exiting."
+            exit 1
         fi
-
-        echo -e "\nHost $host_alias\n    Hostname $hostname\n    User $username" >> "$CONFIG_FILE"
-        echo "Host registered as $host_alias."
-        echo "You can now login using: ssh $host_alias"
-
-        # Attempt login
-        ssh "$host_alias"
-    else
-        # Proceed with normal login
-        if [ -z "$username" ]; then
-            read -p "Enter the username for $host: " username
-        fi
-        ssh "$username@$host"
     fi
+
+    # Add host to SSH config
+    echo -e "\nHost $host_alias\n    Hostname $hostname\n    User $username" >> "$CONFIG_FILE"
+    if ! grep -q "Host $host_alias" "$CONFIG_FILE"; then
+        echo "Error: Failed to append $host_alias to $CONFIG_FILE. Exiting."
+        exit 1
+    fi
+    echo "Host $host_alias saved in $CONFIG_FILE."
+
+    # Attempt to connect
+    ssh "$host_alias"
 }
 
 function handle_host_key_change() {
     local host=$1
     echo "Warning: The host key for $host has changed."
     echo "This could indicate a security risk (e.g., a man-in-the-middle attack)."
-    read -p "Do you want to update the host key? (y/n) " update_key
+    read -rp "Do you want to update the host key? (y/n) " update_key
     if [[ $update_key == "y" ]]; then
         ssh-keygen -R "$host" >/dev/null 2>&1
         echo "Old key removed. Attempting to reconnect and re-register the host..."
