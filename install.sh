@@ -77,44 +77,77 @@ elif [ -L "$SSH_WRAPPER" ]; then
     rm "$SSH_WRAPPER"
 fi
 
-# Create custom SSH wrapper
+# Create custom SSH wrapper that checks ~/.ssh/config for the host:
 echo "Creating custom SSH wrapper at $SSH_WRAPPER ..."
-cat <<EOF >"$SSH_WRAPPER"
+cat <<'EOF' >"$SSH_WRAPPER"
 #!/usr/bin/env bash
-if [[ -z "\$1" ]]; then
-    # Call ssh_register if no arguments are provided
-    /usr/local/bin/ssh_tool/ssh_register
-elif [[ "\$1" == "-l" || "\$1" == "-r" || "\$1" == "-e" || "\$1" == "-uninstall" ]]; then
-    /usr/local/bin/ssh_tool/ssh_register "\$@"
+
+CONFIG_FILE="$HOME/.ssh/config"
+SSH_TOOL_SCRIPT="/usr/local/bin/ssh_tool/ssh_register"
+
+host="$1"
+
+# 1) If no arguments, run our tool (shows help)
+if [[ -z "$host" ]]; then
+    exec "$SSH_TOOL_SCRIPT"
+fi
+
+# 2) If recognized flags (-l, -r, -e, -uninstall), run our tool
+case "$host" in
+    -l|-r|-e|-uninstall)
+        exec "$SSH_TOOL_SCRIPT" "$@"
+        ;;
+esac
+
+# 3) Otherwise, check if this "host" is in ~/.ssh/config
+#    (We look for lines like "Host spainscale", "Host spainscale ")
+if grep -qE "^Host[[:space:]]+$host(\$|[[:space:]])" "$CONFIG_FILE" 2>/dev/null; then
+    # Already in ~/.ssh/config → call system SSH
+    exec /usr/bin/ssh "$@"
 else
-    /usr/bin/ssh "\$@"
+    # Not in ~/.ssh/config → call our custom script for interactive registration
+    exec "$SSH_TOOL_SCRIPT" "$@"
 fi
 EOF
+
 chmod +x "$SSH_WRAPPER"
 
-# Add autocompletion to ~/.zshrc
-if ! grep -q "_ssh_hosts" "$ZSHRC"; then
-    echo "Adding Zsh autocompletion snippet to $ZSHRC ..."
-    cat <<'EOF' >>"$ZSHRC"
+# Add autocompletion snippet if user is truly in Zsh
+# (Some minimal shells can cause "autoload: command not found")
+if [ -f "$ZSHRC" ]; then
+    # A quick test: is $SHELL or $ZSH_VERSION set to zsh?
+    if [[ "$SHELL" == *"zsh" ]] || [[ -n "$ZSH_VERSION" ]]; then
+        if ! grep -q "_ssh_hosts" "$ZSHRC"; then
+            echo "Adding Zsh autocompletion snippet to $ZSHRC ..."
+            cat <<'ACEOF' >>"$ZSHRC"
 
-# Ensure compinit is loaded only once
-if ! (typeset -f compinit &>/dev/null && command compinit -l &>/dev/null); then
+# SSH Tool autocompletion for custom script
+if type compinit &>/dev/null; then
+    # Ensure compinit is loaded
     autoload -Uz compinit
     compinit
+
+    _ssh_hosts() {
+        compadd $(grep -E "^Host" ~/.ssh/config | awk '{print $2}')
+    }
+    compdef _ssh_hosts ssh
+else
+    echo "Warning: 'compinit' not found. Skipping zsh autocompletion setup."
 fi
 
-# SSH autocompletion for custom script
-_ssh_hosts() {
-    compadd $(grep -E "^Host" ~/.ssh/config | awk '{print $2}')
-}
-compdef _ssh_hosts ssh
-EOF
+ACEOF
+        fi
+    else
+        echo "It appears you're not using Zsh, or \$ZSH_VERSION is not set."
+        echo "Skipping Zsh autocompletion snippet."
+    fi
 fi
 
 # Reload Zsh configuration
 echo "Reloading Zsh configuration..."
 if [[ -f "$ZSHRC" ]]; then
-    source "$ZSHRC"
+    # We'll try sourcing, but if user isn't in a true Zsh environment, it's harmless
+    source "$ZSHRC" || true
 else
     echo "Warning: .zshrc file not found. Please reload your terminal manually."
 fi
