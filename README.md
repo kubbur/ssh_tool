@@ -15,17 +15,8 @@ This script provides a streamlined way to manage SSH hosts on macOS. It includes
 Run the `install.sh` script to install the utility and make it accessible as the `ssh` command in your terminal.
 
 ### Steps:
-1. Clone the repository:
-   `git clone https://github.com/kubbur/ssh_tool/ &&
-   cd ssh_tool`
+git clone https://github.com/kubbur/ssh_tool/ && cd ssh_tool && sudo chmod +x install.sh && sudo ./install.sh
 
-2. add x to install.sh:
-   `chmod +x install.sh`
-
-3. pray to a god of your choosing
-
-4. Run the installation script:
-   `sudo ./install.sh`
 
 5. Reload your terminal environment:
    `source ~/.zshrc`
