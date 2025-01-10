@@ -1,3 +1,6 @@
+this is not in a working state
+
+
 # SSH Register Utility for macOS
 
 ## Overview
